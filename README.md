@@ -4,31 +4,20 @@ Claude Code 風の自律 AI エージェント [Hermes Agent](https://github.com
 
 派生元: [aws-samples/sample-host-hermesagent-on-amazon-bedrock-agentcore](https://github.com/aws-samples/sample-host-hermesagent-on-amazon-bedrock-agentcore) (MIT-0)
 
+## できること
+
+- **ChatWork でチャットするだけで Backlog を操作できる**
+  - ChatWork のルームで Hermes に話しかける → Backlog のチケット検索・参照・更新
+  - 例: 「期限切れのチケットを出して」→ Hermes が Backlog を検索して返信
+- ChatWork 以外でも `./hermes-chat` からターミナルで直接対話可能
+- Backlog 以外の MCP ツールも追加すれば任意の外部サービスを操作可能
+
 ## 主な特徴
 
 - **完全 AWS 完結**: Anthropic API キー不要、Bedrock SigV4 IAM 認証
 - **サーバーレス**: AWS Bedrock AgentCore (Firecracker microVM, pay-per-use)
 - **超低コスト**: 月額固定 **¥300〜750** (VPC 全削除版改造)
 - **Mac ターミナルから対話**: 同梱 `./hermes-chat` ローカル CLI
-
-## ⚠️ よくある誤解 — 「Claude Code」ではなく Hermes Agent
-
-本プロジェクトで AWS Bedrock 上で動いているのは **Hermes Agent** (Nous Research 製 OSS) であって、**Anthropic 公式の Claude Code (claude.com/claude-code) ではない**。
-
-| 名前 | 何か | 本プロジェクトとの関係 |
-|------|------|----------------------|
-| **Claude Code** | Anthropic 公式 CLI（claude.com/claude-code） | **無関係**（混同しがち） |
-| **Hermes Agent** | Nous Research 製 OSS 自律エージェント（Claude Code 風） | **これが Bedrock 上で動く** |
-| **Claude (モデル)** | Anthropic の AI モデル（Sonnet 4.6 等） | Hermes が内部で呼ぶ |
-
-つまり:
-
-- 実行環境 = Hermes コンテナ（Nous Research 製、Apache-2.0）
-- 内部で呼ぶ AI モデル = AWS Bedrock 上の Claude Sonnet 4.6
-- **Anthropic / Claude Code アカウントとは完全に独立**
-- 課金は **AWS 請求書**に Bedrock 利用料として統合
-
-「Claude Code ライクな OSS エージェントを、自分の AWS 環境で 24h 動かす」プロジェクト。
 
 ## なぜ Anthropic API キー不要で動くのか
 
