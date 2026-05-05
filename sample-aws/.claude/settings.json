@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(aws logs:*)",
+      "Bash(aws lambda:*)",
+      "Bash(aws apigatewayv2:*)",
+      "Bash(aws secretsmanager:*)",
+      "Bash(aws bedrock:*)",
+      "Bash(aws bedrock-runtime:*)",
+      "Bash(aws bedrock-agentcore-control:*)",
+      "Bash(aws cloudformation:*)",
+      "Bash(aws iam list-role-policies:*)",
+      "Bash(aws iam get-role-policy:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)"
+    ]
+  }
+}

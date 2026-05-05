@@ -1,0 +1,46 @@
+# 認証情報・秘密
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+credentials.json
+
+# AWS
+.aws/
+aws-exports.js
+
+# Hermes Agent ローカルデータ
+hermes_data/
+sessions/
+memory/
+skills_cache/
+*.sqlite
+*.db
+
+# CDK / Terraform
+cdk.out/
+.cdk.staging/
+node_modules/
+*.tfstate
+*.tfstate.backup
+.terraform/
+
+# ログ
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# エディタ
+.vscode/
+.idea/
+*.swp
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/

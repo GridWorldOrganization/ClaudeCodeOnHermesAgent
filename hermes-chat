@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# Hermes Chat Client - AWS Bedrock 上の Hermes Agent と対話する CLI
+# 使い方: ./hermes-chat
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+VENV="$SCRIPT_DIR/sample-aws/.venv"
+PY_SCRIPT="$SCRIPT_DIR/hermes_chat.py"
+
+if [ ! -d "$VENV" ]; then
+    echo "Error: venv not found at $VENV"
+    echo "Run: cd sample-aws && python3 -m venv .venv && .venv/bin/pip install boto3"
+    exit 1
+fi
+
+if [ ! -f "$PY_SCRIPT" ]; then
+    echo "Error: $PY_SCRIPT not found"
+    exit 1
+fi
+
+exec "$VENV/bin/python3" "$PY_SCRIPT" "$@"
