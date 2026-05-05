@@ -11,6 +11,125 @@ Claude Code 風の自律 AI エージェント [Hermes Agent](https://github.com
 - **超低コスト**: 月額固定 **¥300〜750** (VPC 全削除版改造)
 - **Mac ターミナルから対話**: 同梱 `./hermes-chat` ローカル CLI
 
+## ⚠️ よくある誤解 — 「Claude Code」ではなく Hermes Agent
+
+本プロジェクトで AWS Bedrock 上で動いているのは **Hermes Agent** (Nous Research 製 OSS) であって、**Anthropic 公式の Claude Code (claude.com/claude-code) ではない**。
+
+| 名前 | 何か | 本プロジェクトとの関係 |
+|------|------|----------------------|
+| **Claude Code** | Anthropic 公式 CLI（claude.com/claude-code） | **無関係**（混同しがち） |
+| **Hermes Agent** | Nous Research 製 OSS 自律エージェント（Claude Code 風） | **これが Bedrock 上で動く** |
+| **Claude (モデル)** | Anthropic の AI モデル（Sonnet 4.6 等） | Hermes が内部で呼ぶ |
+
+つまり:
+
+- 実行環境 = Hermes コンテナ（Nous Research 製、Apache-2.0）
+- 内部で呼ぶ AI モデル = AWS Bedrock 上の Claude Sonnet 4.6
+- **Anthropic / Claude Code アカウントとは完全に独立**
+- 課金は **AWS 請求書**に Bedrock 利用料として統合
+
+「Claude Code ライクな OSS エージェントを、自分の AWS 環境で 24h 動かす」プロジェクト。
+
+## なぜ Anthropic API キー不要で動くのか
+
+### ① AWS と Anthropic の商用契約
+
+```
+[Anthropic] ─── 卸売契約 ──→ [AWS]
+                              │
+                              ▼ AWS Bedrock として再販
+                           [AWS 顧客 = あなた]
+                              │
+                              ▼ AWS 請求書で支払い
+```
+
+- Anthropic は **AWS Marketplace を通じてモデルを卸売**
+- AWS が Anthropic モデルをマネージドサービス化（Bedrock）
+- AWS 顧客は Anthropic と直接契約 **不要**
+- 課金は AWS 請求書に統合
+
+→ Anthropic API キー（`sk-ant-...`）の代わりに **AWS の IAM 認証** で代替
+
+### ② AWS SigV4 認証（API キー無し）
+
+```
+[Hermes コンテナ]
+   │ HTTP リクエスト
+   │ + AWS Signature v4 ヘッダ
+   │   - AWS_ACCESS_KEY_ID
+   │   - HMAC-SHA256 署名
+   │   - timestamp
+   │   - region
+   ▼
+[Bedrock API エンドポイント]
+   │ 1. 署名検証
+   │ 2. IAM ポリシー確認 (bedrock:InvokeModel ある?)
+   │ 3. Marketplace サブスクリプション確認
+   ▼
+[Anthropic Claude モデル 実行]
+```
+
+API キー不要、毎リクエストに **IAM クレデンシャルで HMAC-SHA256 署名** することで認証完了。
+
+### ③ AgentCore Runtime の自動 IAM 委譲
+
+Hermes コンテナにユーザーが認証情報を渡さない。代わりに AWS が自動委譲する仕組み:
+
+```
+[AgentCore Runtime] (AWS マネージド)
+   │ コンテナ起動時
+   │ → execution_role を assume
+   │ → 一時クレデンシャル発行（AWS_ACCESS_KEY_ID + AWS_SECRET + AWS_SESSION_TOKEN）
+   │ → コンテナ内に環境変数として注入
+   ▼
+[Hermes コンテナ]
+   │ boto3 / AnthropicBedrock SDK が
+   │ 環境変数の credentials を自動取得
+   │ → SigV4 署名付きリクエスト
+   ▼
+[Bedrock]
+```
+
+→ **Hermes コンテナは何も意識せず、AWS の信頼チェーンで認証完了**
+
+CloudWatch ログで実際に確認できる:
+```
+INFO Found credentials from IAM Role: execution_role
+```
+
+これが「IAM ロールから一時クレデンシャル取得した」という意味。
+
+### ④ monkey-patch で Anthropic SDK を Bedrock 経由に置換
+
+Hermes 本体は元々 Anthropic API キーで動く設計。本プロジェクトでは `app/hermes/main.py` で:
+
+```python
+import anthropic
+_OrigAnthropic = anthropic.Anthropic
+
+class _PatchedAnthropic:
+    def __new__(cls, *args, **kwargs):
+        # API キー無しで呼ばれたら Bedrock に置換
+        return anthropic.AnthropicBedrock(aws_region=region)
+
+anthropic.Anthropic = _PatchedAnthropic  # SDK ごと差し替え
+```
+
+→ Hermes コードは「Anthropic 直叩き」のつもりで動くが、実際は **AnthropicBedrock 経由**で AWS Bedrock へ流れる
+
+`AnthropicBedrock` クライアントが自動で SigV4 署名する → API キー不要
+
+### まとめ表
+
+| 質問 | 答え |
+|------|------|
+| 課金は誰? | **AWS 請求書**（Bedrock 利用料として統合） |
+| Anthropic 直契約は必要? | **不要**（AWS Marketplace 経由） |
+| Anthropic API キー (`sk-ant-...`) は? | **不要**（IAM SigV4 認証で代替） |
+| Hermes コンテナは何の認証情報を持つ? | AgentCore が自動注入する **一時 IAM クレデンシャル** |
+| Anthropic は中身を見る? | リクエスト本文は見ない（AWS 経由で隠蔽）。学習にも使われない契約 |
+| Claude Code (claude.com) アカウントは関係? | **無関係** |
+
 ## オリジナル aws-samples からの主な改造
 
 ### 1. VPC 全削除（コスト最適化）
