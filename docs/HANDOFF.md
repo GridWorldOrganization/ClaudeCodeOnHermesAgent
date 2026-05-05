@@ -32,7 +32,7 @@
 #### 実行コマンド
 
 ```bash
-cd sample-aws
+cd infra
 source .venv/bin/activate
 set -a; source ../.env; set +a
 ./scripts/deploy.sh phase3
@@ -77,7 +77,7 @@ curl https://xxx.execute-api.ap-northeast-1.amazonaws.com/health
 
 #### 改造箇所 (4 ファイル)
 
-##### 1. `sample-aws/stacks/router_stack.py`
+##### 1. `infra/stacks/router_stack.py`
 
 ```python
 routes = [
@@ -90,7 +90,7 @@ routes = [
 ]
 ```
 
-##### 2. `sample-aws/lambda/router/index.py`
+##### 2. `infra/lambda/router/index.py`
 
 `_handle_chatwork(event)` 関数追加:
 
@@ -144,7 +144,7 @@ elif path.startswith("/webhook/chatwork"):
     return _handle_chatwork(event)
 ```
 
-##### 3. `sample-aws/stacks/security_stack.py`
+##### 3. `infra/stacks/security_stack.py`
 
 ChatWork 用 Secret 追加:
 
@@ -180,7 +180,7 @@ secret_names = [
 
 ```bash
 # security stack 更新（Secrets 追加）
-cd sample-aws
+cd infra
 source .venv/bin/activate
 cdk deploy hermes-agentcore-security --require-approval never
 
@@ -226,11 +226,11 @@ cdk deploy hermes-agentcore-router --require-approval never
 
 ### 1. .env ファイル
 
-旧ディレクトリからコピー（手動推奨、ターミナルで）:
+`.env.example` から作成:
 
 ```bash
-cp /Users/tobisako/dev/claude_code/gj-board-management/ceo-office/HermesAgent/.env \
-   /Users/tobisako/dev/claude_code/dev/ClaudeCodeOnHermesAgent/.env
+cp .env.example .env
+# エディタで各値を記入
 ```
 
 `.gitignore` に `.env` 入っているので git 追跡されない。
@@ -240,7 +240,7 @@ cp /Users/tobisako/dev/claude_code/gj-board-management/ceo-office/HermesAgent/.e
 ### 2. Python venv
 
 ```bash
-cd sample-aws
+cd infra
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
@@ -262,21 +262,18 @@ pip install -r requirements.txt
 
 | リソース | 値 |
 |---------|-----|
-| AWS Account | 243770953619 |
+| AWS Account | `<YOUR_AWS_ACCOUNT_ID>` |
 | Region | ap-northeast-1 (東京) |
-| AgentCore Runtime ARN | `arn:aws:bedrock-agentcore:ap-northeast-1:243770953619:runtime/hermes_hermes-JhXNFGCzcC` |
+| AgentCore Runtime ARN | `cdk.json` の `agentcore_runtime_arn` を参照 |
 | Hermes デフォルトモデル | `global.anthropic.claude-sonnet-4-6` |
-| ECR イメージ | hermes_hermes-JhXNFGCzcC (ap-northeast-1) |
-| S3 ワークスペース | `hermes-agentcore-user-files-243770953619-ap-northeast-1` |
-| Cognito UserPool | `ap-northeast-1_kszYxj02W` |
-| KMS CMK | `arn:aws:kms:ap-northeast-1:243770953619:key/1bf72626-d881-4c7c-a4d8-b81e7105d3ac` |
+| ECR イメージ | デプロイ後 `cdk.json` に自動記録 |
+| S3 ワークスペース | `hermes-agentcore-user-files-<ACCOUNT_ID>-ap-northeast-1` |
 
 ---
 
 ## 動作確認 (起動直後)
 
 ```bash
-cd /Users/tobisako/dev/claude_code/dev/ClaudeCodeOnHermesAgent
 ./hermes-chat
 You> こんにちは
 Hermes> （応答が返れば OK）
@@ -320,6 +317,4 @@ You> /exit
 
 ## 連絡
 
-旧セッションの作業ログ:
-- `/Users/tobisako/dev/claude_code/gj-board-management/ceo-office/HermesAgent/`（旧場所）
-- claude-mem セッション記録（自動保存）
+claude-mem セッション記録（自動保存）

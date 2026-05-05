@@ -39,8 +39,8 @@ https://us-east-1.console.aws.amazon.com/bedrock/home?region=us-east-1#/model-ca
 
 | フィールド | 内容 | 例 |
 |-----------|------|-----|
-| Company name | 会社名 | `GridWorld Inc.` |
-| Company website URL | 会社 Web サイト URL | `https://gridworld.co` |
+| Company name | 会社名 | `Your Company Name` |
+| Company website URL | 会社 Web サイト URL | `https://your-company.example.com` |
 | Industry | 業界（ドロップダウン）| `Software as a Service` |
 | Intended users | 利用対象（チェックボックス）| `Internal users (employees, staff, team members)` |
 | Use case description | 用途説明（英語、最大 500 文字） | (下記参照) |
@@ -161,7 +161,7 @@ cat /tmp/out.json
 ### AgentCore 経由（Hermes）
 
 ```bash
-cd sample-aws
+cd infra
 agentcore invoke "Say hi briefly" --runtime hermes
 ```
 

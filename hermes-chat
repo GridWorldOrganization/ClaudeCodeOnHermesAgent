@@ -4,12 +4,12 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-VENV="$SCRIPT_DIR/sample-aws/.venv"
+VENV="$SCRIPT_DIR/infra/.venv"
 PY_SCRIPT="$SCRIPT_DIR/hermes_chat.py"
 
 if [ ! -d "$VENV" ]; then
     echo "Error: venv not found at $VENV"
-    echo "Run: cd sample-aws && python3 -m venv .venv && .venv/bin/pip install boto3"
+    echo "Run: cd infra && python3 -m venv .venv && .venv/bin/pip install boto3"
     exit 1
 fi
 

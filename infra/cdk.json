@@ -38,7 +38,7 @@
     "vpc_cidr": "10.0.0.0/16",
     "az_count": 2,
     "alarm_email": "",
-    "agentcore_runtime_arn": "arn:aws:bedrock-agentcore:ap-northeast-1:243770953619:runtime/hermes_hermes-JhXNFGCzcC",
-    "agentcore_qualifier": "hermes_hermes-JhXNFGCzcC"
+    "agentcore_runtime_arn": "arn:aws:bedrock-agentcore:ap-northeast-1:<YOUR_AWS_ACCOUNT_ID>:runtime/<AGENTCORE_RUNTIME_ID>",
+    "agentcore_qualifier": "<AGENTCORE_RUNTIME_ID>"
   }
 }

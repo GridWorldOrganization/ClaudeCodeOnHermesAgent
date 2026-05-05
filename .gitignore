@@ -1,7 +1,7 @@
 # 認証情報・秘密
-.env
-.env.local
-.env.*.local
+# サービス別 env (例: chatwork.env, slack.env)。*.env.sample はテンプレ公開のため除外
+*.env
+!*.env.sample
 *.pem
 *.key
 credentials.json

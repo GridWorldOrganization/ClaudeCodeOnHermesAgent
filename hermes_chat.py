@@ -40,7 +40,7 @@ load_env_file(SCRIPT_DIR / ".env")
 REGION = os.environ.get("AWS_DEFAULT_REGION") or "ap-northeast-1"
 RUNTIME_ARN = (
     os.environ.get("AGENTCORE_RUNTIME_ARN")
-    or "arn:aws:bedrock-agentcore:ap-northeast-1:243770953619:runtime/hermes_hermes-JhXNFGCzcC"
+    or ""  # Set AGENTCORE_RUNTIME_ARN env var or update cdk.json after deploy
 )
 
 # ---------------------------------------------------------------------------

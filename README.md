@@ -206,7 +206,7 @@ cp .env.example .env
 # AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY 等を記入
 
 # 1. CDK Bootstrap (1度だけ、東京)
-cd sample-aws
+cd infra
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 cdk bootstrap aws://<ACCOUNT_ID>/ap-northeast-1

@@ -57,7 +57,7 @@ cp .env.example .env
 ## 2. CDK Bootstrap (初回のみ)
 
 ```bash
-cd sample-aws
+cd infra
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
@@ -133,7 +133,7 @@ aws configure set region ap-northeast-1
 ### AgentCore CLI 経由
 
 ```bash
-cd sample-aws
+cd infra
 agentcore invoke "Say hi briefly" --runtime hermes
 ```
 
@@ -159,7 +159,7 @@ You> /exit
 外部 webhook (Telegram / Slack / Discord / Feishu / **ChatWork** など) との連携が必要な場合:
 
 ```bash
-cd sample-aws
+cd infra
 ./scripts/deploy.sh phase3
 ```
 
@@ -170,7 +170,7 @@ ChatWork 用は `lambda/router/index.py` に `_handle_chatwork()` を追加（PR
 ## 8. 撤退（コスト停止）
 
 ```bash
-cd sample-aws
+cd infra
 ./scripts/teardown.sh
 ```
 
