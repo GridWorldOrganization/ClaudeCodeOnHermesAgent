@@ -221,36 +221,17 @@ You> Hello
 
 ## アーキテクチャ
 
+詳細: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+
 ```
-[ ローカル PC: ./hermes-chat ]
-        │ HTTPS (boto3, SigV4)
-        ▼
-[ AWS Bedrock AgentCore Runtime ]  ← Firecracker microVM (pay-per-use)
-        │
-   Hermes コンテナ (Python 3.11, Bedrock monkey-patch)
-        │
-   AnthropicBedrock client (SigV4 IAM auth)
-        │
-        ▼
-[ Bedrock Foundation Models ]
-   global.anthropic.claude-sonnet-4-6
+[ ChatWork ] → [ API GW ] → [ Lambda A ] → [ SQS ] → [ Lambda B ]
+                                                              │
+                                                    [ AgentCore Runtime ]
+                                                              │
+                                               Hermes コンテナ (MCP: Backlog, ChatWork)
+                                                              │
+                                                    [ Bedrock: Claude Sonnet 4.6 ]
 ```
-
-VPC なし。Lambda Router + ChatWork 連携は Phase 3 オプション拡張。
-
-## 月額コスト（東京、固定分）
-
-| サービス | 月額 USD | 月額 JPY (¥150/$) |
-|---------|---------|-----------|
-| KMS CMK 1個 | $1 | ¥150 |
-| Secrets Manager 5個 | $2 | ¥300 |
-| CloudWatch Logs | ~$1 | ¥150 |
-| ECR ストレージ (~500MB) | $0.05 | ¥8 |
-| S3 (workspace) | <$0.01 | ¥1 |
-| **小計** | **~$4/月** | **~¥600/月** |
-
-+ Bedrock 利用料 (pay-per-token)
-- Claude Sonnet 4.6: 入力 $3/M, 出力 $15/M tokens
 
 ## ライセンス
 
@@ -262,9 +243,10 @@ Hermes Agent 本体: https://github.com/NousResearch/hermes-agent (Apache-2.0)
 
 ## 関連ドキュメント
 
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — アーキテクチャ詳細 (ChatWork パイプライン図含む)
+- [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) — デプロイ詳細手順
 - [docs/ANTHROPIC_APPLICATION.md](docs/ANTHROPIC_APPLICATION.md) — Anthropic 申請の経緯と手順
 - [docs/VPC_REMOVAL.md](docs/VPC_REMOVAL.md) — VPC 削除改造の詳細
-- [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) — デプロイ詳細手順
 - [docs/COST_ESTIMATE.md](docs/COST_ESTIMATE.md) — 月額コスト試算
 
 ## 謝辞
