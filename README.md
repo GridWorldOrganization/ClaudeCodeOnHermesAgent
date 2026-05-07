@@ -241,6 +241,14 @@ You> Hello
 
 Hermes Agent 本体: https://github.com/NousResearch/hermes-agent (Apache-2.0)
 
+## 社内カスタマイズ版（プライベートリポジトリ）
+
+このリポジトリはパブリック汎用版。社内固有設定（AWS アカウント ID・デプロイ済みリソース名・認証情報等）は**プライベートフォーク**で管理:
+
+- **GridWorldOrganization/gj-ClaudeCodeOnHermesAgent** (非公開) — GridWorld/GridJapan 社内実装
+
+詳細: [DOWNSTREAM.md](DOWNSTREAM.md) (公開版の同期・分岐管理ルール)
+
 ## 関連ドキュメント
 
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — アーキテクチャ詳細 (ChatWork パイプライン図含む)

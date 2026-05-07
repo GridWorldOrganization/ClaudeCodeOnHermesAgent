@@ -86,7 +86,29 @@ ChatWork に返信投稿
 | `infra/app/hermes/main.py` | ECR イメージ | AgentCore エントリーポイント + SDK monkey-patch |
 | `infra/app/hermes/mcp_servers/chatwork_server.py` | Hermes コンテナ内 | ChatWork API を MCP ツールとして公開 |
 | `infra/app/hermes/mcp_servers/backlog_server.py` | Hermes コンテナ内 | Backlog API を MCP ツールとして公開 |
-| `infra/lambda/hermes_chatwork_consumer/` | Lambda (SQS trigger) | SQS 受信 → AgentCore 呼出 → ChatWork 返信 |
+| `infra/lambda/router/` | Lambda A (API GW trigger) | ChatWork webhook 受信・署名検証・SQS エンキュー |
+| `infra/lambda/hermes_chatwork_consumer/` | Lambda B (SQS trigger) | SQS 受信 → AgentCore 呼出 → ChatWork 返信 |
+| `infra/lambda/cron/` | Lambda (EventBridge trigger) | 定期タスク実行 |
+| `infra/lambda/token_metrics/` | Lambda (CloudWatch trigger) | トークン使用量集計・メトリクス送信 |
+
+---
+
+## 使用 AWS サービス
+
+| サービス | 用途 |
+|---------|------|
+| **Bedrock AgentCore** | Hermes コンテナ実行基盤 (Firecracker microVM, pay-per-use) |
+| **Bedrock Runtime** | Claude Sonnet 4.6 推論 (SigV4 IAM 認証) |
+| **Lambda** | webhook 受信 / SQS 消費 / cron / メトリクス集計 (4関数) |
+| **API Gateway HTTP API** | ChatWork webhook 受信エンドポイント |
+| **SQS** | Lambda A → Lambda B 非同期バッファ (API GW タイムアウト回避) |
+| **DynamoDB** | ユーザーセッション管理 (identity table) + 冪等性チェック (consumer) |
+| **S3** | AgentCore ワークスペース用ファイルストレージ |
+| **Secrets Manager** | ChatWork token / Slack signing secret 等の機密情報管理 |
+| **CloudWatch** | Lambda ログ・メトリクス・アラーム |
+| **ECR** | Hermes コンテナイメージ保管 |
+| **KMS** | CMK 暗号化 (DynamoDB / S3 / Secrets Manager) |
+| **IAM** | AgentCore execution role (一時クレデンシャル自動注入) |
 
 ---
 
