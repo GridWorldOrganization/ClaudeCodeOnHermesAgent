@@ -10,6 +10,8 @@ import json
 import os
 import urllib.parse
 import urllib.request
+import urllib.error
+from pathlib import Path
 from typing import Any
 
 from mcp.server.fastmcp import FastMCP
@@ -85,6 +87,67 @@ def get_room_messages(room_id: str, force: bool = False) -> list[dict[str, Any]]
     suffix = "?force=1" if force else ""
     msgs = _request("GET", f"/rooms/{room_id}/messages{suffix}") or []
     return msgs
+
+
+@mcp.tool()
+def upload_file(room_id: str, file_path: str, message: str = "") -> dict[str, Any]:
+    """Upload a local file to a ChatWork room.
+
+    Args:
+        room_id: ChatWork room ID (numeric string).
+        file_path: Absolute path to the local file to upload (e.g. /tmp/image_abc.png).
+        message: Optional message to attach to the file post.
+
+    Returns:
+        {"file_id": ..., "message_id": ...} on success.
+    """
+    token = CHATWORK_TOKEN
+    if not token:
+        raise RuntimeError("CHATWORK_API_TOKEN env var not set")
+
+    file_path_obj = Path(file_path)
+    if not file_path_obj.exists():
+        raise FileNotFoundError(f"File not found: {file_path}")
+
+    filename = file_path_obj.name
+    mime_type = "image/png" if filename.endswith(".png") else "application/octet-stream"
+
+    # Build multipart/form-data manually (no external deps).
+    boundary = "----ChatWorkUpload" + os.urandom(8).hex()
+    body_parts: list[bytes] = []
+
+    def _field(name: str, value: str) -> bytes:
+        return (
+            f"--{boundary}\r\n"
+            f'Content-Disposition: form-data; name="{name}"\r\n\r\n'
+            f"{value}\r\n"
+        ).encode()
+
+    if message:
+        body_parts.append(_field("message", message))
+
+    file_data = file_path_obj.read_bytes()
+    body_parts.append(
+        (
+            f"--{boundary}\r\n"
+            f'Content-Disposition: form-data; name="file"; filename="{filename}"\r\n'
+            f"Content-Type: {mime_type}\r\n\r\n"
+        ).encode() + file_data + b"\r\n"
+    )
+    body_parts.append(f"--{boundary}--\r\n".encode())
+
+    body = b"".join(body_parts)
+    req = urllib.request.Request(
+        f"{BASE_URL}/rooms/{room_id}/files",
+        data=body,
+        method="POST",
+        headers={
+            "X-ChatWorkToken": token,
+            "Content-Type": f"multipart/form-data; boundary={boundary}",
+        },
+    )
+    with urllib.request.urlopen(req, timeout=60) as r:
+        return json.loads(r.read().decode("utf-8"))
 
 
 if __name__ == "__main__":

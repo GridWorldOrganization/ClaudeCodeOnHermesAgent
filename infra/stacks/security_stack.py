@@ -50,6 +50,9 @@ class HermesSecurityStack(Stack):
             "feishu-encrypt-key",
             "openai-api-key",
             "openrouter-api-key",
+            "chatwork-api-token",
+            "chatwork-webhook-token",
+            "backlog-api-key",
         ]
         self.secrets: dict[str, sm.Secret] = {}
         for name in secret_names:

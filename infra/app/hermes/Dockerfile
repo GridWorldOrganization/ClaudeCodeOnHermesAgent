@@ -22,7 +22,7 @@ COPY hermes-agent/ /build/hermes-agent/
 # Install hermes-agent + bridge deps into a prefix we can copy later.
 RUN pip install --no-cache-dir --prefix=/install \
         -e "/build/hermes-agent[cron,mcp]" \
-        boto3 botocore litellm bedrock-agentcore
+        boto3 botocore litellm bedrock-agentcore Pillow
 
 # Pre-compile .pyc files for faster cold start.
 RUN python -m compileall -q /install/lib 2>/dev/null || true
@@ -49,6 +49,9 @@ COPY bridge/ /app/bridge/
 
 # Copy main entrypoint.
 COPY main.py /app/main.py
+
+# Copy MCP servers (ChatWork etc.).
+COPY mcp_servers/ /app/mcp_servers/
 
 # Make everything importable.
 ENV PYTHONPATH="/app:/app/hermes-agent"

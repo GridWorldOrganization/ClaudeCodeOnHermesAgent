@@ -68,8 +68,14 @@ mcp_servers:
       - /app/mcp_servers/backlog_server.py
     enabled: true
     timeout: 30
+  image:
+    command: python
+    args:
+      - /app/mcp_servers/image_server.py
+    enabled: true
+    timeout: 120
 YAMLEOF
 
-echo "[entrypoint] $WORKSPACE/config.yaml generated (mcp_servers: chatwork, backlog)"
+echo "[entrypoint] $WORKSPACE/config.yaml generated (mcp_servers: chatwork, backlog, image)"
 
 exec "$@"

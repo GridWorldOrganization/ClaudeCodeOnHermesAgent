@@ -2,8 +2,17 @@
 
 Triggered by SQS messages enqueued by chatwork-webhook-handler (Lambda A).
 - Filters bot self-messages and disallowed rooms.
+- Idempotency check via DynamoDB (prevents duplicate replies on SQS redelivery).
 - Invokes AgentCore Runtime (Hermes Agent + Claude Sonnet 4.6).
 - Posts the response back to the originating ChatWork room.
+
+Environment variables:
+    AGENTCORE_RUNTIME_ARN      — AgentCore runtime ARN (required)
+    CHATWORK_BOT_ACCOUNT_ID    — Bot account ID for self-message filtering
+    CHATWORK_ALLOWED_ROOM_IDS  — Comma-separated allowed room IDs (empty = all)
+    IDEMPOTENCY_TABLE          — DynamoDB table name for idempotency check
+    IDEMPOTENCY_TTL_SECONDS    — TTL for idempotency records (default: 86400)
+    LAMBDA_TIMEOUT_SECONDS     — Expected Lambda timeout in seconds (default: 300)
 """
 from __future__ import annotations
 
@@ -26,6 +35,9 @@ ALLOWED_ROOMS = {
     for s in os.environ.get("CHATWORK_ALLOWED_ROOM_IDS", "").split(",")
     if s.strip()
 }
+IDEMPOTENCY_TABLE = os.environ.get("IDEMPOTENCY_TABLE", "")
+IDEMPOTENCY_TTL_SECONDS = int(os.environ.get("IDEMPOTENCY_TTL_SECONDS", "86400"))
+LAMBDA_TIMEOUT_SECONDS = int(os.environ.get("LAMBDA_TIMEOUT_SECONDS", "300"))
 
 # ----- ChatWork account_id → display name mapping --------------------------
 # Used to build proper [To:<aid>] <Name>さん format in replies.
@@ -38,6 +50,7 @@ CHATWORK_NAMES: dict[str, str] = {
 # ----- aws clients ---------------------------------------------------------
 agentcore = boto3.client("bedrock-agentcore", region_name=REGION)
 sm = boto3.client("secretsmanager", region_name=REGION)
+ddb = boto3.client("dynamodb", region_name=REGION)
 
 _chatwork_token: str | None = None
 
@@ -48,6 +61,32 @@ def get_chatwork_token() -> str:
         r = sm.get_secret_value(SecretId="hermes/chatwork-api-token")
         _chatwork_token = r["SecretString"]
     return _chatwork_token
+
+
+def is_already_processed(idempotency_key: str) -> bool:
+    """Return True if this key was already processed (DynamoDB conditional put).
+
+    Uses ConditionalExpression so the write and check are atomic — no race condition
+    even when two Lambda instances run concurrently on the same SQS message.
+    If IDEMPOTENCY_TABLE is not set, always returns False (idempotency disabled).
+    """
+    if not IDEMPOTENCY_TABLE:
+        return False
+    try:
+        ddb.put_item(
+            TableName=IDEMPOTENCY_TABLE,
+            Item={
+                "messageId": {"S": idempotency_key},
+                "ttl": {"N": str(int(time.time()) + IDEMPOTENCY_TTL_SECONDS)},
+            },
+            ConditionExpression="attribute_not_exists(messageId)",
+        )
+        return False
+    except ClientError as e:
+        if e.response["Error"]["Code"] == "ConditionalCheckFailedException":
+            print(f"[idempotency] skip duplicate: key={idempotency_key}")
+            return True
+        raise
 
 
 def post_to_chatwork(room_id: str, body: str) -> dict:
@@ -143,7 +182,16 @@ def build_prompt(room_id: str, sender_id: str, body: str) -> str:
 - 返答テキストのみ出力。前置き・メタ説明は不要
 - Backlog の情報が必要な場合は backlog 用 MCP ツール (`/app/mcp_servers/backlog_server.py` 内の list_projects, list_issues, get_issue, search_issues 等) を使って取得
 - 投稿には ChatWork マークアップ ([info][title]…[/title]…[/info], [code]…[/code], [quote]…[/quote], [hr] 等) を活用してOK
-- bot 自身は account_id={BOT_ACCOUNT_ID} なので、自分の発言には絶対に反応しない"""
+- bot 自身は account_id={BOT_ACCOUNT_ID} なので、自分の発言には絶対に反応しない
+
+【画像生成ルール — 画像・イラスト・写真生成を依頼された場合】
+1. image MCP の generate_image ツールを呼ぶ (Amazon Nova Canvas / Bedrock)
+   - prompt: 英語で具体的に記述 (日本語の指示は英訳して渡す)
+   - 戻り値: {{"file_path": "/tmp/image_xxx.png", ...}}
+2. chatwork MCP の upload_file ツールで画像を room_id={room_id} にアップロード
+   - message: 日本語で「〇〇の画像を生成しました」等の一言
+3. テキスト返信に「画像を生成してアップロードしました」と添える
+※ generate_image → upload_file の順序を守る。generate_image の file_path をそのまま upload_file に渡す。"""
 
 
 def handle_record(record: dict) -> None:
@@ -158,8 +206,15 @@ def handle_record(record: dict) -> None:
     room_id = str(msg.get("room_id", ""))
     sender_id = str(msg.get("sender_account_id", ""))
     body = msg.get("body", "")
+    # message_id: Lambda A flattens from webhook_event.message_id.
+    # Fallback to room+send_time if not present.
+    message_id = str(
+        msg.get("message_id")
+        or msg.get("webhook_event", {}).get("message_id")
+        or f"{room_id}-{msg.get('send_time', int(time.time()))}"
+    )
 
-    print(f"[recv] type={event_type} room={room_id} from={sender_id} body_len={len(body)}")
+    print(f"[recv] type={event_type} room={room_id} from={sender_id} msg={message_id} body_len={len(body)}")
 
     # message creation events only.
     if event_type and event_type not in ("message_created", "mention_to_me", "to_me"):
@@ -176,6 +231,9 @@ def handle_record(record: dict) -> None:
 
     if ALLOWED_ROOMS and room_id not in ALLOWED_ROOMS:
         print(f"skip: room {room_id} not in allowed list {ALLOWED_ROOMS}")
+        return
+
+    if is_already_processed(message_id):
         return
 
     # Invoke AgentCore Runtime (Hermes + Claude Sonnet 4.6).

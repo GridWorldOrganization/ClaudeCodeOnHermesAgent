@@ -100,6 +100,30 @@ def get_or_create_agent():
     # This ensures preserve_dots=True during __init__ normalization.
     AIAgent._anthropic_preserve_dots = lambda self: True
 
+    # Patch normalize_model_for_provider to preserve Bedrock cross-region
+    # inference profile IDs (e.g. global.anthropic.claude-sonnet-4-6).
+    # hermes-agent's normalizer converts dots to dashes for the 'anthropic'
+    # provider, which breaks Bedrock's inference profile format.
+    try:
+        import hermes_cli.model_normalize as _mn
+        _orig_normalize = _mn.normalize_model_for_provider
+
+        def _bedrock_safe_normalize(model_input: str, target_provider: str) -> str:
+            # Bedrock cross-region inference profile IDs look like
+            # "global.anthropic.*" or "us.anthropic.*" — preserve as-is.
+            if model_input and ("us." in model_input or "eu." in model_input
+                                or "ap." in model_input or "global." in model_input):
+                return model_input
+            return _orig_normalize(model_input, target_provider)
+
+        _mn.normalize_model_for_provider = _bedrock_safe_normalize
+        # Also patch the reference in run_agent (imported separately).
+        import run_agent as _ra
+        if hasattr(_ra, "normalize_model_for_provider"):
+            _ra.normalize_model_for_provider = _bedrock_safe_normalize
+    except Exception:
+        pass
+
     # Use Bedrock model ID directly. The monkey-patched anthropic SDK
     # routes everything through Bedrock automatically.
     # Sonnet 4.6 inference profile id has no -v1 suffix (Opus 4.6 does — quirky).
@@ -175,4 +199,16 @@ if __name__ == "__main__":
         format="%(asctime)s [%(name)s] %(levelname)s %(message)s",
     )
     signal.signal(signal.SIGTERM, _sigterm_handler)
+
+    # discover_mcp_tools() is blocking (future.result timeout=120).
+    # Must be called before app.run() starts the event loop.
+    # Pattern mirrors acp_adapter/entry.py.
+    try:
+        from tools.mcp_tool import discover_mcp_tools
+        discover_mcp_tools()
+    except Exception as _mcp_exc:
+        logging.getLogger("hermes.agentcore").warning(
+            "MCP tool discovery failed at startup: %s", _mcp_exc
+        )
+
     app.run()
